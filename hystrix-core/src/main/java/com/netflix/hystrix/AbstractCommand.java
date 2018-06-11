@@ -301,6 +301,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
     /**
      * Used for asynchronous execution of command with a callback by subscribing to the {@link Observable}.
+     * 通过订阅可观察对象使用异步执行命令
      * <p>
      * This eagerly starts execution of the command the same as {@link HystrixCommand#queue()} and {@link HystrixCommand#execute()}.
      * <p>
@@ -324,7 +325,7 @@ import java.util.concurrent.atomic.AtomicReference;
     public Observable<R> observe() {
         // us a ReplaySubject to buffer the eagerly subscribed-to Observable
         ReplaySubject<R> subject = ReplaySubject.create();
-        // eagerly kick off subscription
+        // eagerly kick off subscription 发起订阅
         final Subscription sourceSubscription = toObservable().subscribe(subject);
         // return the subject that can be subscribed to later while the execution has already started
         return subject.doOnUnsubscribe(new Action0() {
@@ -410,13 +411,15 @@ import java.util.concurrent.atomic.AtomicReference;
                 }
             }
         };
-
+        //创建执行功能回调
         final Func0<Observable<R>> applyHystrixSemantics = new Func0<Observable<R>>() {
             @Override
             public Observable<R> call() {
+                // commandState 处于 UNSUBSCRIBED 时，不执行命令
                 if (commandState.get().equals(CommandState.UNSUBSCRIBED)) {
                     return Observable.never();
                 }
+                // 获得 执行Observable
                 return applyHystrixSemantics(_cmd);
             }
         };
@@ -452,6 +455,7 @@ import java.util.concurrent.atomic.AtomicReference;
             }
         };
 
+        //defer 直到有观察者订阅时才创建Observable，并且为每个观察者创建一个新的Observable
         return Observable.defer(new Func0<Observable<R>>() {
             @Override
             public Observable<R> call() {
@@ -521,13 +525,16 @@ import java.util.concurrent.atomic.AtomicReference;
         executionHook.onStart(_cmd);
 
         /* determine if we're allowed to execute */
+        //确定是否执行
         if (circuitBreaker.attemptExecution()) {
+            //获取执行信号量
             final TryableSemaphore executionSemaphore = getExecutionSemaphore();
             final AtomicBoolean semaphoreHasBeenReleased = new AtomicBoolean(false);
             final Action0 singleSemaphoreRelease = new Action0() {
                 @Override
                 public void call() {
                     if (semaphoreHasBeenReleased.compareAndSet(false, true)) {
+                        //释入信号量
                         executionSemaphore.release();
                     }
                 }
@@ -539,11 +546,13 @@ import java.util.concurrent.atomic.AtomicReference;
                     eventNotifier.markEvent(HystrixEventType.EXCEPTION_THROWN, commandKey);
                 }
             };
-
+            // 信号量 获得
             if (executionSemaphore.tryAcquire()) {
                 try {
                     /* used to track userThreadExecutionTime */
+                    // 标记 executionResult 调用开始时间
                     executionResult = executionResult.setInvocationStartTime(System.currentTimeMillis());
+                    // 获得 执行Observable
                     return executeCommandAndObserve(_cmd)
                             .doOnError(markExceptionThrown)
                             .doOnTerminate(singleSemaphoreRelease)
@@ -552,9 +561,11 @@ import java.util.concurrent.atomic.AtomicReference;
                     return Observable.error(e);
                 }
             } else {
+                //未获得执行信号量，处理拒绝回调
                 return handleSemaphoreRejectionViaFallback();
             }
         } else {
+            //执行断路回调
             return handleShortCircuitViaFallback();
         }
     }
@@ -598,7 +609,7 @@ import java.util.concurrent.atomic.AtomicReference;
                 }
             }
         };
-
+        //失败回退处理
         final Func1<Throwable, Observable<R>> handleFallback = new Func1<Throwable, Observable<R>>() {
             @Override
             public Observable<R> call(Throwable t) {
@@ -631,7 +642,7 @@ import java.util.concurrent.atomic.AtomicReference;
                 setRequestContextIfNeeded(currentRequestContext);
             }
         };
-
+        //执行具有隔离策略的命令，并返回可观察对象
         Observable<R> execution;
         if (properties.executionTimeoutEnabled().get()) {
             execution = executeCommandWithSpecifiedIsolation(_cmd)
@@ -646,6 +657,7 @@ import java.util.concurrent.atomic.AtomicReference;
                 .doOnEach(setRequestContext);
     }
 
+    //执行具有隔离策略的命令，并返回可观察对象
     private Observable<R> executeCommandWithSpecifiedIsolation(final AbstractCommand<R> _cmd) {
         if (properties.executionIsolationStrategy().get() == ExecutionIsolationStrategy.THREAD) {
             // mark that we are executing in a thread (even if we end up being rejected we still were a THREAD execution and not SEMAPHORE)
@@ -709,6 +721,7 @@ import java.util.concurrent.atomic.AtomicReference;
                     }
                     //if it was terminal, then other cleanup handled it
                 }
+                //设置调度器
             }).subscribeOn(threadPool.getScheduler(new Func0<Boolean>() {
                 @Override
                 public Boolean call() {
@@ -1254,6 +1267,7 @@ import java.util.concurrent.atomic.AtomicReference;
      * @return TryableSemaphore
      */
     protected TryableSemaphore getExecutionSemaphore() {
+        //使用信号量
         if (properties.executionIsolationStrategy().get() == ExecutionIsolationStrategy.SEMAPHORE) {
             if (executionSemaphoreOverride == null) {
                 TryableSemaphore _s = executionSemaphorePerCircuit.get(commandKey.name());
@@ -1601,6 +1615,7 @@ import java.util.concurrent.atomic.AtomicReference;
     /* ******************************************************************************** */
 
     /**
+     * 信号量隔离策略
      * Semaphore that only supports tryAcquire and never blocks and that supports a dynamic permit count.
      * <p>
      * Using AtomicInteger increment/decrement instead of java.util.concurrent.Semaphore since we don't need blocking and need a custom implementation to get the dynamic permit count and since
@@ -1613,7 +1628,7 @@ import java.util.concurrent.atomic.AtomicReference;
         public TryableSemaphoreActual(HystrixProperty<Integer> numberOfPermits) {
             this.numberOfPermits = numberOfPermits;
         }
-
+        //无阻塞，jdk的Semaphore是阻塞
         @Override
         public boolean tryAcquire() {
             int currentCount = count.incrementAndGet();
@@ -1636,7 +1651,7 @@ import java.util.concurrent.atomic.AtomicReference;
         }
 
     }
-
+    //线程隔离策略使用
     /* package */static class TryableSemaphoreNoOp implements TryableSemaphore {
 
         public static final TryableSemaphore DEFAULT = new TryableSemaphoreNoOp();

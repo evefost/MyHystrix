@@ -329,6 +329,7 @@ public abstract class HystrixCommand<R> extends AbstractCommand<R> implements Hy
 
     /**
      * Used for synchronous execution of command.
+     * 使用同步执行命令
      * 
      * @return R
      *         Result of {@link #run()} execution or a fallback from {@link #getFallback()} if the command fails for any reason.
@@ -349,6 +350,7 @@ public abstract class HystrixCommand<R> extends AbstractCommand<R> implements Hy
 
     /**
      * Used for asynchronous execution of command.
+     * 使用异步执命令
      * <p>
      * This will queue up the command on the thread pool and return an {@link Future} to get the result once it completes.
      * <p>

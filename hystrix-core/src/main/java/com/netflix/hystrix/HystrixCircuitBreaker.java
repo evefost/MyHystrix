@@ -88,6 +88,7 @@ public interface HystrixCircuitBreaker {
          */
         public static HystrixCircuitBreaker getInstance(HystrixCommandKey key, HystrixCommandGroupKey group, HystrixCommandProperties properties, HystrixCommandMetrics metrics) {
             // this should find it for all but the first time
+            //从缓存中获取对应断路器
             HystrixCircuitBreaker previouslyCached = circuitBreakersByCommand.get(key.name());
             if (previouslyCached != null) {
                 return previouslyCached;

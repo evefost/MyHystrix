@@ -83,6 +83,7 @@ public interface HystrixThreadPool {
     public boolean isQueueSpaceAvailable();
 
     /**
+     * 线程池工厂，非线程工厂
      * @ExcludeFromJavadoc
      */
     /* package */static class Factory {
@@ -101,15 +102,18 @@ public interface HystrixThreadPool {
          */
         /* package */static HystrixThreadPool getInstance(HystrixThreadPoolKey threadPoolKey, HystrixThreadPoolProperties.Setter propertiesBuilder) {
             // get the key to use instead of using the object itself so that if people forget to implement equals/hashcode things will still work
+            //获取池的名称
             String key = threadPoolKey.name();
 
             // this should find it for all but the first time
+            //若该名字的池已创建则返回该池
             HystrixThreadPool previouslyCached = threadPools.get(key);
             if (previouslyCached != null) {
                 return previouslyCached;
             }
 
             // if we get here this is the first time so we need to initialize
+            //首次创建默认线程池
             synchronized (HystrixThreadPool.class) {
                 if (!threadPools.containsKey(key)) {
                     threadPools.put(key, new HystrixThreadPoolDefault(threadPoolKey, propertiesBuilder));
