@@ -894,6 +894,7 @@ import java.util.concurrent.atomic.AtomicReference;
         }
     }
 
+    //获取用户执行可观察对象
     private Observable<R> getUserExecutionObservable(final AbstractCommand<R> _cmd) {
         Observable<R> userObservable;
 

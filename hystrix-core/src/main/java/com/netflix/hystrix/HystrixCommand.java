@@ -299,6 +299,7 @@ public abstract class HystrixCommand<R> extends AbstractCommand<R> implements Hy
             @Override
             public Observable<R> call() {
                 try {
+                    //执行正常逻辑代码
                     return Observable.just(run());
                 } catch (Throwable ex) {
                     return Observable.error(ex);
@@ -377,6 +378,7 @@ public abstract class HystrixCommand<R> extends AbstractCommand<R> implements Hy
          * interruption of the execution thread when the "mayInterrupt" flag of Future.cancel(boolean) is set to true;
          * thus, to comply with the contract of Future, we must wrap around it.
          */
+        //toFuture订阅将执行
         final Future<R> delegate = toObservable().toBlocking().toFuture();
     	
         final Future<R> f = new Future<R>() {
