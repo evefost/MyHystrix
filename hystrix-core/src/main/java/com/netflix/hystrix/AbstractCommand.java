@@ -324,6 +324,7 @@ import java.util.concurrent.atomic.AtomicReference;
      */
     public Observable<R> observe() {
         // us a ReplaySubject to buffer the eagerly subscribed-to Observable
+       // ReplaySubject会缓存所有已经发射的数据，当一个新的订阅关系产生时，ReplaySuject会将所有数据都发送给他。另外，ReplaySubject支持设置缓存数据和缓存时间。如下图：
         ReplaySubject<R> subject = ReplaySubject.create();
         // eagerly kick off subscription 发起订阅
         final Subscription sourceSubscription = toObservable().subscribe(subject);

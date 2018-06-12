@@ -47,6 +47,17 @@ public class CommandHelloFailure extends HystrixCommand<String> {
     }
 
     public static class UnitTest {
+        @Test
+        public void testSynchronous0() {
+            try {
+                String world = new CommandHelloFailure("World").execute();
+                System.out.println("========="+world);
+            }catch (Exception e){
+                e.printStackTrace();
+            }
+
+
+        }
 
         @Test
         public void testSynchronous() {
